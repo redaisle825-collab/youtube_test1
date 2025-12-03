@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type, Schema } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import { GeneratedContent, AnalysisResponse } from "../types";
 
 let API_KEY = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY || process.env.API_KEY;
@@ -22,52 +22,6 @@ if (!API_KEY && typeof window !== 'undefined') {
   if (stored) API_KEY = stored;
 }
 
-const analysisSchema: Schema = {
-  type: Type.OBJECT,
-  properties: {
-    analysis: {
-      type: Type.OBJECT,
-      properties: {
-        structuralAnalysis: {
-          type: Type.ARRAY,
-          items: { type: Type.STRING },
-          description: "Key points explaining the structure of the original viral video.",
-        },
-        tone: {
-          type: Type.STRING,
-          description: "The identified tone of the original script.",
-        },
-        hookStrategy: {
-          type: Type.STRING,
-          description: "How the original script hooks the audience.",
-        },
-      },
-      required: ["structuralAnalysis", "tone", "hookStrategy"],
-    },
-    suggestedTopics: {
-      type: Type.ARRAY,
-      items: { type: Type.STRING },
-      description: "4 creative, viral-worthy new topics that would fit this exact script structure perfectly. In Korean.",
-    },
-  },
-  required: ["analysis", "suggestedTopics"],
-};
-
-const scriptSchema: Schema = {
-  type: Type.OBJECT,
-  properties: {
-    title: {
-      type: Type.STRING,
-      description: "A click-worthy, viral-style title for the new video.",
-    },
-    script: {
-      type: Type.STRING,
-      description: "The full generated script in Markdown format. Include visual cues in [brackets].",
-    },
-  },
-  required: ["title", "script"],
-};
-
 export const analyzeScript = async (originalScript: string): Promise<AnalysisResponse> => {
   const apiKey = getApiKey();
   if (!apiKey) {
@@ -75,52 +29,66 @@ export const analyzeScript = async (originalScript: string): Promise<AnalysisRes
   }
 
   try {
-    const genAI = new GoogleGenAI({ apiKey });
+    const genAI = new GoogleGenAI(apiKey);
     
     const prompt = `You are a YouTube Algorithm Strategist.
 Analyze the provided "Original Viral Script" to extract its "Viral DNA".
 
 Task:
-1. Analyze the structure, tone, and hook strategy.
+1. Analyze the structure, tone, and hook strategy. Provide at least 3-5 structural analysis points.
 2. Suggest 4 NEW, VIRAL topics that would work perfectly with this specific formula/structure.
    - The topics should be diverse but relevant to a general audience or similar niche.
    - Output everything in Korean.
+
+IMPORTANT: Return ONLY valid JSON in this exact format:
+{
+  "analysis": {
+    "structuralAnalysis": ["분석 포인트 1", "분석 포인트 2", "분석 포인트 3"],
+    "tone": "톤 설명",
+    "hookStrategy": "후킹 전략 설명"
+  },
+  "suggestedTopics": ["주제 1", "주제 2", "주제 3", "주제 4"]
+}
 
 Original Viral Script:
 """
 ${originalScript}
 """`;
 
-    const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
-      systemInstruction: "You are an expert script consultant. Analyze deep structural patterns. Always respond in Korean.",
+    const result = await genAI.generateContent({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: analysisSchema,
         temperature: 0.8,
+        maxOutputTokens: 2048,
       },
     });
 
-    const result = await model.generateContent(prompt);
     const response = result.response;
-    const text = response.text();
+    let text = response.text();
     
     if (!text) {
       throw new Error("AI로부터 응답을 받지 못했습니다.");
     }
 
+    // Clean up response - remove markdown code blocks if present
+    text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    
     const parsedData = JSON.parse(text);
     console.log("Analysis Response:", parsedData);
     return parsedData as AnalysisResponse;
   } catch (error: any) {
     console.error("Gemini Analysis Error:", error);
     
-    if (error.message?.includes('API key') || error.message?.includes('API_KEY')) {
+    if (error.message?.includes('API key') || error.message?.includes('API_KEY') || error.status === 400) {
       throw new Error("API 키가 유효하지 않습니다. 올바른 API 키를 입력했는지 확인해주세요.");
     }
     
-    if (error.message?.includes('quota')) {
+    if (error.message?.includes('quota') || error.status === 429) {
       throw new Error("API 사용량 한도를 초과했습니다. 잠시 후 다시 시도해주세요.");
+    }
+    
+    if (error instanceof SyntaxError) {
+      throw new Error("AI 응답을 파싱하는 중 오류가 발생했습니다. 다시 시도해주세요.");
     }
     
     throw new Error(`분석 중 오류가 발생했습니다: ${error.message || '알 수 없는 오류'}`);
@@ -137,7 +105,7 @@ export const generateFinalScript = async (
   }
 
   try {
-    const genAI = new GoogleGenAI({ apiKey });
+    const genAI = new GoogleGenAI(apiKey);
     
     const prompt = `You are an expert YouTube Scriptwriter.
 
@@ -150,6 +118,12 @@ Rules:
 - If the original uses specific rhetorical questions or call-to-actions, adapt them for the new topic at the same relative timestamps.
 - Output in Korean (Hangul).
 
+IMPORTANT: Return ONLY valid JSON in this exact format:
+{
+  "title": "클릭을 유도하는 제목",
+  "script": "# 제목\\n\\n전체 스크립트 내용..."
+}
+
 Original Viral Script:
 """
 ${originalScript}
@@ -160,36 +134,40 @@ Target Topic:
 ${newTopic}
 """`;
 
-    const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
-      systemInstruction: "You are a ghostwriter for top YouTubers. You replicate styles perfectly. Always write in Korean.",
+    const result = await genAI.generateContent({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: scriptSchema,
         temperature: 0.8,
+        maxOutputTokens: 4096,
       },
     });
 
-    const result = await model.generateContent(prompt);
     const response = result.response;
-    const text = response.text();
+    let text = response.text();
     
     if (!text) {
       throw new Error("AI로부터 응답을 받지 못했습니다.");
     }
 
+    // Clean up response - remove markdown code blocks if present
+    text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    
     const parsedData = JSON.parse(text);
     console.log("Generated Script:", parsedData);
     return parsedData as GeneratedContent;
   } catch (error: any) {
     console.error("Gemini Generation Error:", error);
     
-    if (error.message?.includes('API key') || error.message?.includes('API_KEY')) {
+    if (error.message?.includes('API key') || error.message?.includes('API_KEY') || error.status === 400) {
       throw new Error("API 키가 유효하지 않습니다. 올바른 API 키를 입력했는지 확인해주세요.");
     }
     
-    if (error.message?.includes('quota')) {
+    if (error.message?.includes('quota') || error.status === 429) {
       throw new Error("API 사용량 한도를 초과했습니다. 잠시 후 다시 시도해주세요.");
+    }
+    
+    if (error instanceof SyntaxError) {
+      throw new Error("AI 응답을 파싱하는 중 오류가 발생했습니다. 다시 시도해주세요.");
     }
     
     throw new Error(`스크립트 생성 중 오류가 발생했습니다: ${error.message || '알 수 없는 오류'}`);
