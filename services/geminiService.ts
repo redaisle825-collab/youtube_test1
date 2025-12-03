@@ -64,10 +64,22 @@ ${originalScript}
       },
     });
 
-    const response = result.response;
-    let text = response.text();
+    console.log("API Result:", result);
+    
+    let text = '';
+    if (result.response && result.response.text) {
+      text = result.response.text();
+    } else if (result.text) {
+      text = typeof result.text === 'function' ? result.text() : result.text;
+    } else if (result.response && result.response.candidates && result.response.candidates[0]) {
+      const candidate = result.response.candidates[0];
+      if (candidate.content && candidate.content.parts && candidate.content.parts[0]) {
+        text = candidate.content.parts[0].text;
+      }
+    }
     
     if (!text) {
+      console.error("No text in response:", result);
       throw new Error("AI로부터 응답을 받지 못했습니다.");
     }
 
@@ -144,10 +156,22 @@ ${newTopic}
       },
     });
 
-    const response = result.response;
-    let text = response.text();
+    console.log("API Result:", result);
+    
+    let text = '';
+    if (result.response && result.response.text) {
+      text = result.response.text();
+    } else if (result.text) {
+      text = typeof result.text === 'function' ? result.text() : result.text;
+    } else if (result.response && result.response.candidates && result.response.candidates[0]) {
+      const candidate = result.response.candidates[0];
+      if (candidate.content && candidate.content.parts && candidate.content.parts[0]) {
+        text = candidate.content.parts[0].text;
+      }
+    }
     
     if (!text) {
+      console.error("No text in response:", result);
       throw new Error("AI로부터 응답을 받지 못했습니다.");
     }
 
