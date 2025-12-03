@@ -29,7 +29,9 @@ export const analyzeScript = async (originalScript: string): Promise<AnalysisRes
   }
 
   try {
-    const genAI = new GoogleGenAI(apiKey);
+    const genAI = new GoogleGenAI({
+      apiKey: apiKey
+    });
     
     const prompt = `You are a YouTube Algorithm Strategist.
 Analyze the provided "Original Viral Script" to extract its "Viral DNA".
@@ -79,7 +81,7 @@ ${originalScript}
   } catch (error: any) {
     console.error("Gemini Analysis Error:", error);
     
-    if (error.message?.includes('API key') || error.message?.includes('API_KEY') || error.status === 400) {
+    if (error.message?.includes('API key') || error.message?.includes('API_KEY') || error.message?.includes('API Key') || error.status === 400) {
       throw new Error("API 키가 유효하지 않습니다. 올바른 API 키를 입력했는지 확인해주세요.");
     }
     
@@ -105,7 +107,9 @@ export const generateFinalScript = async (
   }
 
   try {
-    const genAI = new GoogleGenAI(apiKey);
+    const genAI = new GoogleGenAI({
+      apiKey: apiKey
+    });
     
     const prompt = `You are an expert YouTube Scriptwriter.
 
@@ -158,7 +162,7 @@ ${newTopic}
   } catch (error: any) {
     console.error("Gemini Generation Error:", error);
     
-    if (error.message?.includes('API key') || error.message?.includes('API_KEY') || error.status === 400) {
+    if (error.message?.includes('API key') || error.message?.includes('API_KEY') || error.message?.includes('API Key') || error.status === 400) {
       throw new Error("API 키가 유효하지 않습니다. 올바른 API 키를 입력했는지 확인해주세요.");
     }
     
