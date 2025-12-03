@@ -56,6 +56,10 @@ const scriptSchema: Schema = {
 };
 
 export const analyzeScript = async (originalScript: string): Promise<AnalysisResponse> => {
+  if (!API_KEY) {
+    throw new Error("API 키가 설정되지 않았습니다. .env 파일에 VITE_GEMINI_API_KEY를 설정해주세요.");
+  }
+
   try {
     const prompt = `
       You are a YouTube Algorithm Strategist.
@@ -73,18 +77,20 @@ export const analyzeScript = async (originalScript: string): Promise<AnalysisRes
       """
     `;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-      config: {
-        systemInstruction: "You are an expert script consultant. Analyze deep structural patterns.",
+    const model = ai.generativeModel({
+      model: "gemini-2.0-flash-exp",
+      systemInstruction: "You are an expert script consultant. Analyze deep structural patterns.",
+      generationConfig: {
         responseMimeType: "application/json",
         responseSchema: analysisSchema,
         temperature: 0.7,
       },
     });
 
-    const text = response.text;
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+    
     if (!text) throw new Error("No analysis generated");
 
     return JSON.parse(text) as AnalysisResponse;
@@ -98,6 +104,10 @@ export const generateFinalScript = async (
   originalScript: string,
   newTopic: string
 ): Promise<GeneratedContent> => {
+  if (!API_KEY) {
+    throw new Error("API 키가 설정되지 않았습니다. .env 파일에 VITE_GEMINI_API_KEY를 설정해주세요.");
+  }
+
   try {
     const prompt = `
       You are an expert YouTube Scriptwriter.
@@ -122,18 +132,20 @@ export const generateFinalScript = async (
       """
     `;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-      config: {
-        systemInstruction: "You are a ghostwriter for top YouTubers. You replicate styles perfectly.",
+    const model = ai.generativeModel({
+      model: "gemini-2.0-flash-exp",
+      systemInstruction: "You are a ghostwriter for top YouTubers. You replicate styles perfectly.",
+      generationConfig: {
         responseMimeType: "application/json",
         responseSchema: scriptSchema,
         temperature: 0.7,
       },
     });
 
-    const text = response.text;
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+    
     if (!text) throw new Error("No script generated");
 
     return JSON.parse(text) as GeneratedContent;
