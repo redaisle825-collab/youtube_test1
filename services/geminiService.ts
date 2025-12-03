@@ -22,6 +22,37 @@ if (!API_KEY && typeof window !== 'undefined') {
   if (stored) API_KEY = stored;
 }
 
+// Helper function to extract text from API response
+const extractTextFromResponse = (result: any): string => {
+  console.log("Extracting text from result:", result);
+  
+  let text = '';
+  
+  // Try different response structures
+  if (result.response) {
+    if (typeof result.response.text === 'function') {
+      text = result.response.text();
+    } else if (result.response.candidates && result.response.candidates[0]) {
+      const candidate = result.response.candidates[0];
+      if (candidate.content && candidate.content.parts && candidate.content.parts[0]) {
+        text = candidate.content.parts[0].text || '';
+      }
+    }
+  } else if (result.candidates && result.candidates[0]) {
+    const candidate = result.candidates[0];
+    if (candidate.content && candidate.content.parts && candidate.content.parts[0]) {
+      text = candidate.content.parts[0].text || '';
+    }
+  } else if (typeof result.text === 'function') {
+    text = result.text();
+  } else if (typeof result.text === 'string') {
+    text = result.text;
+  }
+  
+  console.log("Extracted text:", text);
+  return text;
+};
+
 export const analyzeScript = async (originalScript: string): Promise<AnalysisResponse> => {
   const apiKey = getApiKey();
   if (!apiKey) {
@@ -64,29 +95,17 @@ ${originalScript}
       },
     });
 
-    console.log("API Result:", result);
-    
-    let text = '';
-    if (result.response && result.response.text) {
-      text = result.response.text();
-    } else if (result.text) {
-      text = typeof result.text === 'function' ? result.text() : result.text;
-    } else if (result.response && result.response.candidates && result.response.candidates[0]) {
-      const candidate = result.response.candidates[0];
-      if (candidate.content && candidate.content.parts && candidate.content.parts[0]) {
-        text = candidate.content.parts[0].text;
-      }
-    }
+    const text = extractTextFromResponse(result);
     
     if (!text) {
-      console.error("No text in response:", result);
-      throw new Error("AI로부터 응답을 받지 못했습니다.");
+      console.error("No text extracted. Full result:", JSON.stringify(result, null, 2));
+      throw new Error("AI로부터 응답을 받지 못했습니다. 다시 시도해주세요.");
     }
 
     // Clean up response - remove markdown code blocks if present
-    text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    const cleanText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     
-    const parsedData = JSON.parse(text);
+    const parsedData = JSON.parse(cleanText);
     console.log("Analysis Response:", parsedData);
     return parsedData as AnalysisResponse;
   } catch (error: any) {
@@ -156,29 +175,17 @@ ${newTopic}
       },
     });
 
-    console.log("API Result:", result);
-    
-    let text = '';
-    if (result.response && result.response.text) {
-      text = result.response.text();
-    } else if (result.text) {
-      text = typeof result.text === 'function' ? result.text() : result.text;
-    } else if (result.response && result.response.candidates && result.response.candidates[0]) {
-      const candidate = result.response.candidates[0];
-      if (candidate.content && candidate.content.parts && candidate.content.parts[0]) {
-        text = candidate.content.parts[0].text;
-      }
-    }
+    const text = extractTextFromResponse(result);
     
     if (!text) {
-      console.error("No text in response:", result);
-      throw new Error("AI로부터 응답을 받지 못했습니다.");
+      console.error("No text extracted. Full result:", JSON.stringify(result, null, 2));
+      throw new Error("AI로부터 응답을 받지 못했습니다. 다시 시도해주세요.");
     }
 
     // Clean up response - remove markdown code blocks if present
-    text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    const cleanText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     
-    const parsedData = JSON.parse(text);
+    const parsedData = JSON.parse(cleanText);
     console.log("Generated Script:", parsedData);
     return parsedData as GeneratedContent;
   } catch (error: any) {
