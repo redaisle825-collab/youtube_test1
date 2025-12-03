@@ -63,13 +63,18 @@ const App: React.FC = () => {
 
   // Step 2: Generate Script with Selected Topic
   const handleGenerate = async (topic: string) => {
-    if (!originalScript || !topic) return;
+    if (!originalScript || !topic) {
+      console.error("Missing data:", { originalScript: !!originalScript, topic });
+      return;
+    }
 
+    console.log("Generating script for topic:", topic);
     setLoadingState(LoadingState.GENERATING);
     setError(null);
 
     try {
       const data = await generateFinalScript(originalScript, topic);
+      console.log("Generation successful:", data);
       setFinalResult(data);
       setStep(AppStep.RESULT);
       setLoadingState(LoadingState.COMPLETE);
@@ -77,6 +82,7 @@ const App: React.FC = () => {
       console.error("Generation error:", err);
       setError(err.message || "스크립트 생성 중 오류가 발생했습니다. 다시 시도해주세요.");
       setLoadingState(LoadingState.ERROR);
+      // Stay on SELECTION step so user can try again
     }
   };
 
@@ -275,6 +281,18 @@ const App: React.FC = () => {
                         message="새로운 대본 작성 중..." 
                         subMessage="선택하신 주제로 원본의 호흡을 살려 다시 쓰는 중입니다." 
                       />
+                   ) : loadingState === LoadingState.ERROR ? (
+                      <div className="space-y-4">
+                        <div className="bg-red-950/30 border border-red-900/50 rounded-xl p-4 text-red-400 text-sm">
+                          <p className="font-medium mb-2">⚠️ 스크립트 생성 실패</p>
+                          <p className="text-xs text-red-400/80">{error}</p>
+                        </div>
+                        <TopicSelector 
+                          suggestions={analysisData.suggestedTopics} 
+                          onSelect={handleGenerate} 
+                          isLoading={false}
+                        />
+                      </div>
                    ) : (
                       <TopicSelector 
                         suggestions={analysisData.suggestedTopics} 
