@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { Wand2, Youtube, RefreshCw, AlertCircle, ArrowLeft } from 'lucide-react';
-import { analyzeScript, generateFinalScript } from './services/geminiService';
+import React, { useState, useEffect } from 'react';
+import { Wand2, Youtube, RefreshCw, AlertCircle, ArrowLeft, Key } from 'lucide-react';
+import { analyzeScript, generateFinalScript, setApiKey as setGeminiApiKey, getApiKey } from './services/geminiService';
 import { AnalysisResponse, GeneratedContent, LoadingState, AppStep } from './types';
 import { AnalysisResult } from './components/AnalysisResult';
 import { ScriptOutput } from './components/ScriptOutput';
@@ -12,14 +12,39 @@ const App: React.FC = () => {
   const [originalScript, setOriginalScript] = useState('');
   const [analysisData, setAnalysisData] = useState<AnalysisResponse | null>(null);
   const [finalResult, setFinalResult] = useState<GeneratedContent | null>(null);
+  const [apiKey, setApiKey] = useState<string>('');
+  const [showApiKeyInput, setShowApiKeyInput] = useState<boolean>(false);
   
   const [loadingState, setLoadingState] = useState<LoadingState>(LoadingState.IDLE);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const storedKey = getApiKey();
+    if (storedKey) {
+      setApiKey(storedKey);
+      setShowApiKeyInput(false);
+    } else {
+      setShowApiKeyInput(true);
+    }
+  }, []);
+
+  const handleSaveApiKey = () => {
+    if (apiKey.trim()) {
+      setGeminiApiKey(apiKey);
+      setShowApiKeyInput(false);
+    }
+  };
 
   // Step 1: Analyze Script
   const handleAnalyze = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!originalScript.trim()) return;
+
+    if (!getApiKey()) {
+      setError("API 키를 먼저 설정해주세요.");
+      setShowApiKeyInput(true);
+      return;
+    }
 
     setLoadingState(LoadingState.ANALYZING);
     setError(null);
@@ -85,10 +110,62 @@ const App: React.FC = () => {
             {step === AppStep.SELECTION && 'Step 2. 주제 선택'}
             {step === AppStep.RESULT && 'Step 3. 완성'}
           </div>
+          <button
+            onClick={() => setShowApiKeyInput(!showApiKeyInput)}
+            className="text-slate-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-slate-800"
+            title="API 키 설정"
+          >
+            <Key className="w-5 h-5" />
+          </button>
         </div>
       </header>
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        
+        {/* API Key Input Modal */}
+        {showApiKeyInput && (
+          <div className="mb-6 bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-xl animate-in slide-in-from-top-2">
+            <div className="flex items-start gap-3 mb-4">
+              <Key className="w-5 h-5 text-indigo-400 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-white mb-1">Gemini API 키 설정</h3>
+                <p className="text-sm text-slate-400">
+                  Google AI Studio에서 API 키를 발급받아 입력하세요. 
+                  <a 
+                    href="https://aistudio.google.com/apikey" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-indigo-400 hover:text-indigo-300 underline ml-1"
+                  >
+                    API 키 발급 →
+                  </a>
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <input
+                type="password"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="AIza... 형식의 API 키를 입력하세요"
+                className="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-200 placeholder-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+              />
+              <button
+                onClick={handleSaveApiKey}
+                disabled={!apiKey.trim()}
+                className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 text-white font-medium px-6 py-2.5 rounded-lg transition-colors"
+              >
+                저장
+              </button>
+            </div>
+            {getApiKey() && (
+              <p className="text-xs text-green-400 mt-3 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                API 키가 저장되어 있습니다
+              </p>
+            )}
+          </div>
+        )}
         
         {/* Error Display */}
         {loadingState === LoadingState.ERROR && (

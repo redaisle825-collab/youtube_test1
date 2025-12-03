@@ -1,13 +1,34 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { GeneratedContent, AnalysisResponse } from "../types";
 
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY || process.env.API_KEY;
+let API_KEY = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY || process.env.API_KEY;
 
-if (!API_KEY) {
-  console.error("⚠️ Gemini API Key is not set. Please set VITE_GEMINI_API_KEY in your .env file.");
+export const setApiKey = (key: string) => {
+  API_KEY = key;
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('gemini_api_key', key);
+  }
+};
+
+export const getApiKey = (): string => {
+  if (!API_KEY && typeof window !== 'undefined') {
+    API_KEY = localStorage.getItem('gemini_api_key') || '';
+  }
+  return API_KEY || '';
+};
+
+if (!API_KEY && typeof window !== 'undefined') {
+  const stored = localStorage.getItem('gemini_api_key');
+  if (stored) API_KEY = stored;
 }
 
-const ai = new GoogleGenAI({ apiKey: API_KEY || "" });
+const getAI = () => {
+  const key = getApiKey();
+  if (!key) {
+    throw new Error("API 키가 설정되지 않았습니다.");
+  }
+  return new GoogleGenAI({ apiKey: key });
+};
 
 const analysisSchema: Schema = {
   type: Type.OBJECT,
@@ -56,11 +77,9 @@ const scriptSchema: Schema = {
 };
 
 export const analyzeScript = async (originalScript: string): Promise<AnalysisResponse> => {
-  if (!API_KEY) {
-    throw new Error("API 키가 설정되지 않았습니다. .env 파일에 VITE_GEMINI_API_KEY를 설정해주세요.");
-  }
-
   try {
+    const ai = getAI();
+    
     const prompt = `
       You are a YouTube Algorithm Strategist.
       Analyze the provided "Original Viral Script" to extract its "Viral DNA".
@@ -104,11 +123,9 @@ export const generateFinalScript = async (
   originalScript: string,
   newTopic: string
 ): Promise<GeneratedContent> => {
-  if (!API_KEY) {
-    throw new Error("API 키가 설정되지 않았습니다. .env 파일에 VITE_GEMINI_API_KEY를 설정해주세요.");
-  }
-
   try {
+    const ai = getAI();
+    
     const prompt = `
       You are an expert YouTube Scriptwriter.
       
