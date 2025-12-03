@@ -91,7 +91,7 @@ Original Viral Script:
 ${originalScript}
 """`;
 
-    const model = genAI.generativeModel({
+    const model = genAI.getGenerativeModel({
       model: "gemini-1.5-flash",
       systemInstruction: "You are an expert script consultant. Analyze deep structural patterns. Always respond in Korean.",
       generationConfig: {
@@ -115,7 +115,7 @@ ${originalScript}
   } catch (error: any) {
     console.error("Gemini Analysis Error:", error);
     
-    if (error.message?.includes('API key')) {
+    if (error.message?.includes('API key') || error.message?.includes('API_KEY')) {
       throw new Error("API 키가 유효하지 않습니다. 올바른 API 키를 입력했는지 확인해주세요.");
     }
     
@@ -160,7 +160,7 @@ Target Topic:
 ${newTopic}
 """`;
 
-    const model = genAI.generativeModel({
+    const model = genAI.getGenerativeModel({
       model: "gemini-1.5-flash",
       systemInstruction: "You are a ghostwriter for top YouTubers. You replicate styles perfectly. Always write in Korean.",
       generationConfig: {
@@ -184,7 +184,7 @@ ${newTopic}
   } catch (error: any) {
     console.error("Gemini Generation Error:", error);
     
-    if (error.message?.includes('API key')) {
+    if (error.message?.includes('API key') || error.message?.includes('API_KEY')) {
       throw new Error("API 키가 유효하지 않습니다. 올바른 API 키를 입력했는지 확인해주세요.");
     }
     
