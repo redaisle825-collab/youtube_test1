@@ -29,9 +29,8 @@ export const analyzeScript = async (originalScript: string): Promise<AnalysisRes
   }
 
   try {
-    const genAI = new GoogleGenAI({
-      apiKey: apiKey
-    });
+    const genAI = new GoogleGenAI({ apiKey });
+    const model = await genAI.models.get("gemini-1.5-flash");
     
     const prompt = `You are a YouTube Algorithm Strategist.
 Analyze the provided "Original Viral Script" to extract its "Viral DNA".
@@ -57,9 +56,9 @@ Original Viral Script:
 ${originalScript}
 """`;
 
-    const result = await genAI.generateContent({
+    const result = await model.generateContent({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: {
+      config: {
         temperature: 0.8,
         maxOutputTokens: 2048,
       },
@@ -107,9 +106,8 @@ export const generateFinalScript = async (
   }
 
   try {
-    const genAI = new GoogleGenAI({
-      apiKey: apiKey
-    });
+    const genAI = new GoogleGenAI({ apiKey });
+    const model = await genAI.models.get("gemini-1.5-flash");
     
     const prompt = `You are an expert YouTube Scriptwriter.
 
@@ -138,9 +136,9 @@ Target Topic:
 ${newTopic}
 """`;
 
-    const result = await genAI.generateContent({
+    const result = await model.generateContent({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: {
+      config: {
         temperature: 0.8,
         maxOutputTokens: 4096,
       },
