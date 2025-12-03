@@ -22,14 +22,6 @@ if (!API_KEY && typeof window !== 'undefined') {
   if (stored) API_KEY = stored;
 }
 
-const getAI = () => {
-  const key = getApiKey();
-  if (!key) {
-    throw new Error("API 키가 설정되지 않았습니다.");
-  }
-  return new GoogleGenAI({ apiKey: key });
-};
-
 const analysisSchema: Schema = {
   type: Type.OBJECT,
   properties: {
@@ -77,45 +69,61 @@ const scriptSchema: Schema = {
 };
 
 export const analyzeScript = async (originalScript: string): Promise<AnalysisResponse> => {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    throw new Error("API 키가 설정되지 않았습니다. 오른쪽 상단의 키 아이콘을 클릭하여 API 키를 입력해주세요.");
+  }
+
   try {
-    const ai = getAI();
+    const genAI = new GoogleGenAI({ apiKey });
     
-    const prompt = `
-      You are a YouTube Algorithm Strategist.
-      Analyze the provided "Original Viral Script" to extract its "Viral DNA".
-      
-      Task:
-      1. Analyze the structure, tone, and hook strategy.
-      2. Suggest 4 NEW, VIRAL topics that would work perfectly with this specific formula/structure.
-         - The topics should be diverse but relevant to a general audience or similar niche.
-         - Output everything in Korean.
+    const prompt = `You are a YouTube Algorithm Strategist.
+Analyze the provided "Original Viral Script" to extract its "Viral DNA".
 
-      Original Viral Script:
-      """
-      ${originalScript}
-      """
-    `;
+Task:
+1. Analyze the structure, tone, and hook strategy.
+2. Suggest 4 NEW, VIRAL topics that would work perfectly with this specific formula/structure.
+   - The topics should be diverse but relevant to a general audience or similar niche.
+   - Output everything in Korean.
 
-    const model = ai.generativeModel({
-      model: "gemini-2.0-flash-exp",
-      systemInstruction: "You are an expert script consultant. Analyze deep structural patterns.",
+Original Viral Script:
+"""
+${originalScript}
+"""`;
+
+    const model = genAI.generativeModel({
+      model: "gemini-1.5-flash",
+      systemInstruction: "You are an expert script consultant. Analyze deep structural patterns. Always respond in Korean.",
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: analysisSchema,
-        temperature: 0.7,
+        temperature: 0.8,
       },
     });
 
     const result = await model.generateContent(prompt);
-    const response = await result.response;
+    const response = result.response;
     const text = response.text();
     
-    if (!text) throw new Error("No analysis generated");
+    if (!text) {
+      throw new Error("AI로부터 응답을 받지 못했습니다.");
+    }
 
-    return JSON.parse(text) as AnalysisResponse;
-  } catch (error) {
+    const parsedData = JSON.parse(text);
+    console.log("Analysis Response:", parsedData);
+    return parsedData as AnalysisResponse;
+  } catch (error: any) {
     console.error("Gemini Analysis Error:", error);
-    throw error;
+    
+    if (error.message?.includes('API key')) {
+      throw new Error("API 키가 유효하지 않습니다. 올바른 API 키를 입력했는지 확인해주세요.");
+    }
+    
+    if (error.message?.includes('quota')) {
+      throw new Error("API 사용량 한도를 초과했습니다. 잠시 후 다시 시도해주세요.");
+    }
+    
+    throw new Error(`분석 중 오류가 발생했습니다: ${error.message || '알 수 없는 오류'}`);
   }
 };
 
@@ -123,51 +131,67 @@ export const generateFinalScript = async (
   originalScript: string,
   newTopic: string
 ): Promise<GeneratedContent> => {
-  try {
-    const ai = getAI();
-    
-    const prompt = `
-      You are an expert YouTube Scriptwriter.
-      
-      Task:
-      Write a COMPLETELY NEW script about the "Target Topic" that strictly follows exactly the same successful structure, pacing, and style as the "Original Viral Script".
-      
-      Rules:
-      - The new script must match the specific "New Topic".
-      - Maintain the same energy level and sentence length patterns as the original.
-      - If the original uses specific rhetorical questions or call-to-actions, adapt them for the new topic at the same relative timestamps.
-      - Output in Korean (Hangul).
-      
-      Original Viral Script:
-      """
-      ${originalScript}
-      """
-      
-      Target Topic:
-      """
-      ${newTopic}
-      """
-    `;
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    throw new Error("API 키가 설정되지 않았습니다. 오른쪽 상단의 키 아이콘을 클릭하여 API 키를 입력해주세요.");
+  }
 
-    const model = ai.generativeModel({
-      model: "gemini-2.0-flash-exp",
-      systemInstruction: "You are a ghostwriter for top YouTubers. You replicate styles perfectly.",
+  try {
+    const genAI = new GoogleGenAI({ apiKey });
+    
+    const prompt = `You are an expert YouTube Scriptwriter.
+
+Task:
+Write a COMPLETELY NEW script about the "Target Topic" that strictly follows exactly the same successful structure, pacing, and style as the "Original Viral Script".
+
+Rules:
+- The new script must match the specific "New Topic".
+- Maintain the same energy level and sentence length patterns as the original.
+- If the original uses specific rhetorical questions or call-to-actions, adapt them for the new topic at the same relative timestamps.
+- Output in Korean (Hangul).
+
+Original Viral Script:
+"""
+${originalScript}
+"""
+
+Target Topic:
+"""
+${newTopic}
+"""`;
+
+    const model = genAI.generativeModel({
+      model: "gemini-1.5-flash",
+      systemInstruction: "You are a ghostwriter for top YouTubers. You replicate styles perfectly. Always write in Korean.",
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: scriptSchema,
-        temperature: 0.7,
+        temperature: 0.8,
       },
     });
 
     const result = await model.generateContent(prompt);
-    const response = await result.response;
+    const response = result.response;
     const text = response.text();
     
-    if (!text) throw new Error("No script generated");
+    if (!text) {
+      throw new Error("AI로부터 응답을 받지 못했습니다.");
+    }
 
-    return JSON.parse(text) as GeneratedContent;
-  } catch (error) {
+    const parsedData = JSON.parse(text);
+    console.log("Generated Script:", parsedData);
+    return parsedData as GeneratedContent;
+  } catch (error: any) {
     console.error("Gemini Generation Error:", error);
-    throw error;
+    
+    if (error.message?.includes('API key')) {
+      throw new Error("API 키가 유효하지 않습니다. 올바른 API 키를 입력했는지 확인해주세요.");
+    }
+    
+    if (error.message?.includes('quota')) {
+      throw new Error("API 사용량 한도를 초과했습니다. 잠시 후 다시 시도해주세요.");
+    }
+    
+    throw new Error(`스크립트 생성 중 오류가 발생했습니다: ${error.message || '알 수 없는 오류'}`);
   }
 };

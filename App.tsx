@@ -41,7 +41,7 @@ const App: React.FC = () => {
     if (!originalScript.trim()) return;
 
     if (!getApiKey()) {
-      setError("API 키를 먼저 설정해주세요.");
+      setError("API 키를 먼저 설정해주세요. 우측 상단의 🔑 아이콘을 클릭하세요.");
       setShowApiKeyInput(true);
       return;
     }
@@ -54,8 +54,9 @@ const App: React.FC = () => {
       setAnalysisData(data);
       setStep(AppStep.SELECTION);
       setLoadingState(LoadingState.IDLE);
-    } catch (err) {
-      setError("대본 분석 중 오류가 발생했습니다. 다시 시도해주세요.");
+    } catch (err: any) {
+      console.error("Analysis error:", err);
+      setError(err.message || "대본 분석 중 오류가 발생했습니다. 다시 시도해주세요.");
       setLoadingState(LoadingState.ERROR);
     }
   };
@@ -72,8 +73,9 @@ const App: React.FC = () => {
       setFinalResult(data);
       setStep(AppStep.RESULT);
       setLoadingState(LoadingState.COMPLETE);
-    } catch (err) {
-      setError("스크립트 생성 중 오류가 발생했습니다. 다시 시도해주세요.");
+    } catch (err: any) {
+      console.error("Generation error:", err);
+      setError(err.message || "스크립트 생성 중 오류가 발생했습니다. 다시 시도해주세요.");
       setLoadingState(LoadingState.ERROR);
     }
   };
